@@ -10,6 +10,7 @@
 #include <stdbool.h>
 #include <pthread.h>
 #include <unistd.h>
+#include <stdlib.h>
 #include "mqtt.h"
 
 int mqtt_module_init(const char * broker, const char * port);

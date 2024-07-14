@@ -12,7 +12,7 @@ static pthread_t refresher_thread;
 
 static int open_socket_nonblock(const char * broker, const char * port);
 static void publish_callback(void** unused, struct mqtt_response_publish *published);
-void* client_refresher(void* client);
+static void* client_refresher(void* client);
 
 int mqtt_module_init(const char * broker, const char * port){
     enum MQTTErrors err;
@@ -62,10 +62,26 @@ void mqtt_module_deinit(void){
     close(sockfd);
 }
 
+int mqtt_module_publish(const char * topic, const char * message){
+    enum MQTTErrors err;
+    err = mqtt_publish(&client, topic, message, strlen(message) + 1, MQTT_PUBLISH_QOS_0);
+    if(err != MQTT_OK){
+        syslog(LOG_ERR, "Error: Could not publish message\n");
+        return -1;
+    }
+
+    return 0;
+}
+
 static void publish_callback(void** unused, struct mqtt_response_publish *published){
     (void)unused;
-    (void)published;
-    syslog(LOG_INFO, "Received message\n");
+
+    char* topic_name = (char*) malloc(published->topic_name_size + 1);
+    memcpy(topic_name, published->topic_name, published->topic_name_size);
+    topic_name[published->topic_name_size] = '\0';
+    syslog(LOG_INFO, "Received message (topic: '%s'): %s\n", topic_name, (const char *)published->application_message);
+
+    free(topic_name);
 }
 
 static int open_socket_nonblock(const char * broker, const char * port){
@@ -111,7 +127,7 @@ static int open_socket_nonblock(const char * broker, const char * port){
     return sockfd;
 }
 
-void* client_refresher(void* client) {
+static void* client_refresher(void* client) {
     while(refresh) {
         mqtt_sync((struct mqtt_client*) client);
         usleep(100000U);
