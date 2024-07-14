@@ -12,7 +12,7 @@
 #include <sys/ioctl.h>
 #include <time.h>
 #include <errno.h>
-#include "mqtt.h"
+#include "mqtt_module.h"
 
 #define CONFIGURATION_FILE_PATH                     "/etc/retransmitter/config.ini"
 #define NRF24_CONFIGURATION_CHANNEL_DEFAULT          36
