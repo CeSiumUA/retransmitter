@@ -1,5 +1,5 @@
 BASE_CC = gcc
-CFLAGS ?= -g -Wall -Wextra
+CFLAGS ?= -g -Wall -Wextra -Werror
 LDFLAGS ?= -lpthread -lrt
 TARGET ?= retransmitter
 CC ?= $(CROSS_COMPILE)$(BASE_CC)
