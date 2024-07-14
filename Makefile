@@ -6,7 +6,7 @@ CC ?= $(CROSS_COMPILE)$(BASE_CC)
 
 all: $(TARGET)
 
-retransmitter:
+retransmitter: src/main.c
 	$(CC) $(CFLAGS) -I ./inc/ -o $(TARGET) src/main.c $(LDFLAGS)
 clean:
 	rm -f $(TARGET)
