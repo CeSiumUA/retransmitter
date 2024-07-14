@@ -13,6 +13,7 @@
 #include "mqtt.h"
 
 int mqtt_module_init(const char * broker, const char * port);
+int mqtt_module_publish(const char * topic, const char * message);
 void mqtt_module_deinit(void);
 
 #endif // __MQTT_MODULE_H__

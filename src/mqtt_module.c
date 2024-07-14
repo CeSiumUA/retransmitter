@@ -54,6 +54,8 @@ err_exit:
 }
 
 void mqtt_module_deinit(void){
+    refresh = false;
+    pthread_join(refresher_thread, NULL);
     mqtt_disconnect(&client);
     close(sockfd);
 }
