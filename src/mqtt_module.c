@@ -1,7 +1,7 @@
 #include "mqtt_module.h"
 
 const char * const mqtt_client_name = "retransmitter_1";
-const char * const mqtt_topic = "temperature";
+const char * const mqtt_topic = "retransmitter/temperature";
 
 static struct mqtt_client client;
 static uint8_t sendbuf[2048] = {0};
@@ -34,6 +34,8 @@ int mqtt_module_init(const char * broker, const char * port){
         syslog(LOG_ERR, "Error: Could not connect to broker\n");
         goto err_exit;
     }
+
+    syslog(LOG_INFO, "Connected to broker\n");
 
     if(pthread_create(&refresher_thread, NULL, client_refresher, &client) != 0){
         syslog(LOG_ERR, "Error: Could not create refresher thread\n");
@@ -75,6 +77,8 @@ static int open_socket_nonblock(const char * broker, const char * port){
 
     int sockfd = -1;
     int res;
+
+    syslog(LOG_DEBUG, "Connecting to broker %s:%s\n", broker, port);
 
     res = getaddrinfo(broker, port, &hints, &servinfo);
     if(res != 0) {
