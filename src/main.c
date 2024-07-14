@@ -41,6 +41,7 @@ int main(int argc, char **argv) {
     }
 
 exit:
+    mqtt_module_deinit();
     closelog();
     return res;
 }
@@ -61,7 +62,7 @@ static void load_configuration(const char *configuration_file, struct retransmit
             } else if(strcmp(key, "mqtt_broker") == 0) {
                 strncpy(retransmitter_configuration->mqtt_broker, value, sizeof(retransmitter_configuration->mqtt_broker));
             } else if(strcmp(key, "mqtt_port") == 0) {
-                retransmitter_configuration->mqtt_port = atoi(value);
+                strncpy(retransmitter_configuration->mqtt_port, value, sizeof(retransmitter_configuration->mqtt_port));
             }
         }
 
@@ -93,7 +94,7 @@ static void load_configuration(const char *configuration_file, struct retransmit
 
     const char *env_mqtt_port = getenv(MQTT_CONFIGURATION_PORT_ENV_NAME);
     if(env_mqtt_port != NULL) {
-        retransmitter_configuration->mqtt_port = atoi(env_mqtt_port);
+        strncpy(retransmitter_configuration->mqtt_port, env_mqtt_port, sizeof(retransmitter_configuration->mqtt_port));
     }
 }
 
@@ -101,6 +102,7 @@ static void signal_handler(int sig) {
     switch(sig) {
         case SIGINT:
         case SIGTERM:
+            mqtt_module_deinit();
             closelog();
             exit(EXIT_SUCCESS);
             break;

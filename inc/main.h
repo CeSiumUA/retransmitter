@@ -24,7 +24,7 @@
 
 #define MQTT_CONFIGURATION_BROKER_DEFAULT             "localhost"
 #define MQTT_CONFIGURATION_BROKER_ENV_NAME           "RETRANSMITTER_MQTT_BROKER"
-#define MQTT_CONFIGURATION_PORT_DEFAULT               1883
+#define MQTT_CONFIGURATION_PORT_DEFAULT               "1883"
 #define MQTT_CONFIGURATION_PORT_ENV_NAME             "RETRANSMITTER_MQTT_PORT"
 
 struct retransmitter_configuration_t {
@@ -32,7 +32,7 @@ struct retransmitter_configuration_t {
     uint8_t rx_payload_size;
     uint8_t data_rate;
     char mqtt_broker[256];
-    uint16_t mqtt_port;
+    char mqtt_port[6];
 };
 
 #endif // __MAIN_H__
