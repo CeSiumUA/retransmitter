@@ -1,7 +1,7 @@
 #include "mqtt_module.h"
 
-const char * const mqtt_client_name = "retransmitter_1";
-const char * const mqtt_topic = "retransmitter/temperature";
+const char * const mqtt_client_name = MQTT_MODULE_CLIENT_NAME;
+const char * const mqtt_topic = MQTT_MODULE_TEMPERATURE_TOPIC;
 
 static struct mqtt_client client;
 static uint8_t sendbuf[2048] = {0};
