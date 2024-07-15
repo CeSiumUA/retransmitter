@@ -1,14 +1,17 @@
 #include "main.h"
 
+static bool running = true;
 static void load_configuration(const char *configuration_file, struct retransmitter_configuration_t *nrf24_configuration);
 static void signal_handler(int sig);
 static void mqtt_message_received_callback(const char *topic, const char *message);
+static void read_lopp(void);
 
 int main(int argc, char **argv) {
     struct retransmitter_configuration_t retransmitter_configuration = {
         .channel = NRF24_CONFIGURATION_CHANNEL_DEFAULT,
         .rx_payload_size = NRF24_CONFIGURATION_RX_PAYLOAD_SIZE_DEFAULT,
         .data_rate = NRF24_CONFIGURATION_DATA_RATE_DEFAULT,
+        .data_pipe = NRF24_CONFIGURATION_DATA_PIPE_DEFAULT,
         .mqtt_broker = MQTT_CONFIGURATION_BROKER_DEFAULT,
         .mqtt_port = MQTT_CONFIGURATION_PORT_DEFAULT
     };
@@ -45,16 +48,38 @@ int main(int argc, char **argv) {
     res = daemon(0, 0);
     if(res != 0) {
         syslog(LOG_ERR, "Error: Could not daemonize the process (%s)\n", strerror(errno));
-        goto exit;
+        goto mqtt_exit;
     }
 
-    //FIXME Implement the retransmitter logic
-    while(fgetc(stdin) != EOF);
+    res = nrf24_open(retransmitter_configuration.channel,
+                retransmitter_configuration.rx_payload_size,
+                retransmitter_configuration.data_rate,
+                retransmitter_configuration.data_pipe);
 
-exit:
+    if(res != 0) {
+        syslog(LOG_ERR, "Error: Could not initialize NRF24 module\n");
+        goto mqtt_exit;
+    }
+
+    read_lopp();
+    
+    nrf24_close();
+mqtt_exit:
     mqtt_module_deinit();
+exit:
     closelog();
     return res;
+}
+
+static void read_lopp(void) {
+    int res = 0;
+    uint8_t buffer[32] = {0};
+    while(running) {
+        res = nrf24_read(buffer, sizeof(buffer));
+        if(res > 0) {
+            syslog(LOG_INFO, "Message received: %s\n", buffer);
+        }
+    }
 }
 
 static void load_configuration(const char *configuration_file, struct retransmitter_configuration_t *retransmitter_configuration) {
@@ -71,6 +96,8 @@ static void load_configuration(const char *configuration_file, struct retransmit
                 retransmitter_configuration->rx_payload_size = atoi(value);
             } else if(strcmp(key, "data_rate") == 0) {
                 retransmitter_configuration->data_rate = atoi(value);
+            } else if(strcmp(key, "data_pipe") == 0) {
+                retransmitter_configuration->data_pipe = atoi(value);
             } else if(strcmp(key, "mqtt_broker") == 0) {
                 strncpy(retransmitter_configuration->mqtt_broker, value, sizeof(retransmitter_configuration->mqtt_broker));
             } else if(strcmp(key, "mqtt_port") == 0) {
