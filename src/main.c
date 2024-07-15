@@ -1,13 +1,16 @@
 #include "main.h"
 
-static void load_configuration(const char *configuration_file, struct nrf24_configuration_t *nrf24_configuration);
+static void load_configuration(const char *configuration_file, struct retransmitter_configuration_t *nrf24_configuration);
 static void signal_handler(int sig);
+static void mqtt_message_received_callback(const char *topic, const char *message);
 
 int main(int argc, char **argv) {
-    struct nrf24_configuration_t nrf24_configuration = {
+    struct retransmitter_configuration_t retransmitter_configuration = {
         .channel = NRF24_CONFIGURATION_CHANNEL_DEFAULT,
         .rx_payload_size = NRF24_CONFIGURATION_RX_PAYLOAD_SIZE_DEFAULT,
-        .data_rate = NRF24_CONFIGURATION_DATA_RATE_DEFAULT
+        .data_rate = NRF24_CONFIGURATION_DATA_RATE_DEFAULT,
+        .mqtt_broker = MQTT_CONFIGURATION_BROKER_DEFAULT,
+        .mqtt_port = MQTT_CONFIGURATION_PORT_DEFAULT
     };
     char *configuration_file = NULL;
     struct sigaction sa = {
@@ -30,7 +33,14 @@ int main(int argc, char **argv) {
     sigaction(SIGTERM, &sa, NULL);
 
     syslog(LOG_DEBUG, "Loading configuration\n");
-    load_configuration(configuration_file, &nrf24_configuration);
+    load_configuration(configuration_file, &retransmitter_configuration);
+
+    syslog(LOG_DEBUG, "Initializing MQTT module\n");
+    res = mqtt_module_init(retransmitter_configuration.mqtt_broker, retransmitter_configuration.mqtt_port, mqtt_message_received_callback);
+    if(res != 0) {
+        syslog(LOG_ERR, "Error: Could not initialize MQTT module\n");
+        goto exit;
+    }
 
     res = daemon(0, 0);
     if(res != 0) {
@@ -38,25 +48,35 @@ int main(int argc, char **argv) {
         goto exit;
     }
 
+    //FIXME Implement the retransmitter logic
+    while(fgetc(stdin) != EOF);
+
 exit:
+    mqtt_module_deinit();
     closelog();
     return res;
 }
 
-static void load_configuration(const char *configuration_file, struct nrf24_configuration_t *nrf24_configuration) {
+static void load_configuration(const char *configuration_file, struct retransmitter_configuration_t *retransmitter_configuration) {
     FILE *file = fopen(configuration_file, "r");
     if(file != NULL) {
-        char line[256];
+        char line[256] = {0};
         while(fgets(line, sizeof(line), file)) {
+            line[strcspn(line, "\n")] = 0;
             char *key = strtok(line, "=");
             char *value = strtok(NULL, "=");
             if(strcmp(key, "channel") == 0) {
-                nrf24_configuration->channel = atoi(value);
+                retransmitter_configuration->channel = atoi(value);
             } else if(strcmp(key, "rx_payload_size") == 0) {
-                nrf24_configuration->rx_payload_size = atoi(value);
+                retransmitter_configuration->rx_payload_size = atoi(value);
             } else if(strcmp(key, "data_rate") == 0) {
-                nrf24_configuration->data_rate = atoi(value);
+                retransmitter_configuration->data_rate = atoi(value);
+            } else if(strcmp(key, "mqtt_broker") == 0) {
+                strncpy(retransmitter_configuration->mqtt_broker, value, sizeof(retransmitter_configuration->mqtt_broker));
+            } else if(strcmp(key, "mqtt_port") == 0) {
+                strncpy(retransmitter_configuration->mqtt_port, value, sizeof(retransmitter_configuration->mqtt_port));
             }
+            memset(line, 0, sizeof(line));
         }
 
         fclose(file);
@@ -67,17 +87,32 @@ static void load_configuration(const char *configuration_file, struct nrf24_conf
 
     const char *env_channel = getenv(NRF24_CONFIGURATION_CHANNEL_ENV_NAME);
     if(env_channel != NULL) {
-        nrf24_configuration->channel = atoi(env_channel);
+        syslog(LOG_DEBUG, "env channel value: %s\n", env_channel);
+        retransmitter_configuration->channel = atoi(env_channel);
     }
 
     const char *env_rx_payload_size = getenv(NRF24_CONFIGURATION_RX_PAYLOAD_SIZE_ENV_NAME);
     if(env_rx_payload_size != NULL) {
-        nrf24_configuration->rx_payload_size = atoi(env_rx_payload_size);
+        syslog(LOG_DEBUG, "env rx_payload_size value: %s\n", env_rx_payload_size);
+        retransmitter_configuration->rx_payload_size = atoi(env_rx_payload_size);
     }
 
     const char *env_data_rate = getenv(NRF24_CONFIGURATION_DATA_RATE_ENV_NAME);
     if(env_data_rate != NULL) {
-        nrf24_configuration->data_rate = atoi(env_data_rate);
+        syslog(LOG_DEBUG, "env data_rate value: %s\n", env_data_rate);
+        retransmitter_configuration->data_rate = atoi(env_data_rate);
+    }
+
+    const char *env_mqtt_broker = getenv(MQTT_CONFIGURATION_BROKER_ENV_NAME);
+    if(env_mqtt_broker != NULL) {
+        syslog(LOG_DEBUG, "env mqtt_broker value: %s\n", env_mqtt_broker);
+        strncpy(retransmitter_configuration->mqtt_broker, env_mqtt_broker, sizeof(retransmitter_configuration->mqtt_broker));
+    }
+
+    const char *env_mqtt_port = getenv(MQTT_CONFIGURATION_PORT_ENV_NAME);
+    if(env_mqtt_port != NULL) {
+        syslog(LOG_DEBUG, "env mqtt_port value: %s\n", env_mqtt_port);
+        strncpy(retransmitter_configuration->mqtt_port, env_mqtt_port, sizeof(retransmitter_configuration->mqtt_port));
     }
 }
 
@@ -85,10 +120,18 @@ static void signal_handler(int sig) {
     switch(sig) {
         case SIGINT:
         case SIGTERM:
+            syslog(LOG_INFO, "Signal received, exiting\n");
+            syslog(LOG_DEBUG, "Deinitializing MQTT module\n");
+            mqtt_module_deinit();
+            syslog(LOG_DEBUG, "Closing log\n");
             closelog();
             exit(EXIT_SUCCESS);
             break;
         default:
             break;
     }
+}
+
+static void mqtt_message_received_callback(const char *topic, const char *message) {
+    syslog(LOG_INFO, "Message received on topic %s: %s\n", topic, message);
 }
