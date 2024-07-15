@@ -72,10 +72,10 @@ err_exit:
 int nrf24_read(uint8_t *buffer, size_t buffer_size) {
     int bytes_read = 0;
 
-    do {
-        bytes_read = fread(buffer, 1, buffer_size, nrf24_device);
-        usleep(100);
-    } while(bytes_read < 0 && errno == EAGAIN);
+    bytes_read = fread(buffer, 1, buffer_size, nrf24_device);
+    if(bytes_read < 0 && errno == EAGAIN){
+        return 0;
+    }
 
     if(bytes_read < 0) {
         syslog(LOG_ERR, "Error: Could not read from device\n");

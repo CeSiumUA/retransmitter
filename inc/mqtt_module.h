@@ -13,6 +13,10 @@
 #include <stdlib.h>
 #include "mqtt.h"
 
+#define MQTT_MODULE_TEMPERATURE_TOPIC                   "retransmitter/temperature"
+#define MQTT_MODULE_GET_TEMPERATURE_TOPIC               "retransmitter/get_temperature"
+#define MQTT_MODULE_CLIENT_NAME                         "retransmitter_1"
+
 int mqtt_module_init(const char * broker, const char * port, void (*callback)(const char * topic, const char * message));
 int mqtt_module_publish(const char * topic, const char * message);
 void mqtt_module_deinit(void);

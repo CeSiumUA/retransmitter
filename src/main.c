@@ -4,7 +4,9 @@ static bool running = true;
 static void load_configuration(const char *configuration_file, struct retransmitter_configuration_t *nrf24_configuration);
 static void signal_handler(int sig);
 static void mqtt_message_received_callback(const char *topic, const char *message);
-static void read_lopp(void);
+static void read_write_loop(void);
+char *nrf24_message_to_write = NULL;
+struct mutex nrf24_message_mutex;
 
 int main(int argc, char **argv) {
     struct retransmitter_configuration_t retransmitter_configuration = {
@@ -38,11 +40,17 @@ int main(int argc, char **argv) {
     syslog(LOG_DEBUG, "Loading configuration\n");
     load_configuration(configuration_file, &retransmitter_configuration);
 
+    res = pthread_mutex_init(&nrf24_message_mutex, NULL);
+    if(res != 0) {
+        syslog(LOG_ERR, "Error: Could not initialize mutex\n");
+        goto exit;
+    }
+
     syslog(LOG_DEBUG, "Initializing MQTT module\n");
     res = mqtt_module_init(retransmitter_configuration.mqtt_broker, retransmitter_configuration.mqtt_port, mqtt_message_received_callback);
     if(res != 0) {
         syslog(LOG_ERR, "Error: Could not initialize MQTT module\n");
-        goto exit;
+        goto mutex_exit;
     }
 
     res = daemon(0, 0);
@@ -61,23 +69,43 @@ int main(int argc, char **argv) {
         goto mqtt_exit;
     }
 
-    read_lopp();
-    
+    read_write_loop();
+
     nrf24_close();
 mqtt_exit:
     mqtt_module_deinit();
+mutex_exit:
+    pthread_mutex_destroy(&nrf24_message_mutex);
 exit:
     closelog();
     return res;
 }
 
-static void read_lopp(void) {
+static void read_write_loop(void) {
     int res = 0;
     uint8_t buffer[32] = {0};
     while(running) {
         res = nrf24_read(buffer, sizeof(buffer));
         if(res > 0) {
             syslog(LOG_INFO, "Message received: %s\n", buffer);
+            res = mqtt_module_publish(MQTT_MODULE_TEMPERATURE_TOPIC, buffer);
+            if(res != 0) {
+                syslog(LOG_ERR, "Error: Could not publish message\n");
+            }
+        }
+
+        usleep(10);
+
+        if(nrf24_message_to_write != NULL){
+            syslog(LOG_INFO, "Writing message: %s\n", nrf24_message_to_write);
+            pthread_mutex_lock(&nrf24_message_mutex);
+            res = nrf24_write(nrf24_message_to_write, strlen(nrf24_message_to_write) + 1);
+            if(res < 0) {
+                syslog(LOG_ERR, "Error: Could not write message\n");
+            }
+            free(nrf24_message_to_write);
+            nrf24_message_to_write = NULL;
+            pthread_mutex_unlock(&nrf24_message_mutex);
         }
     }
 }
@@ -124,6 +152,12 @@ static void load_configuration(const char *configuration_file, struct retransmit
         retransmitter_configuration->rx_payload_size = atoi(env_rx_payload_size);
     }
 
+    const char *env_data_pipe = getenv(NRF24_CONFIGURATION_DATA_PIPE_ENV_NAME);
+    if(env_data_pipe != NULL) {
+        syslog(LOG_DEBUG, "env data_pipe value: %s\n", env_data_pipe);
+        retransmitter_configuration->data_pipe = atoi(env_data_pipe);
+    }
+
     const char *env_data_rate = getenv(NRF24_CONFIGURATION_DATA_RATE_ENV_NAME);
     if(env_data_rate != NULL) {
         syslog(LOG_DEBUG, "env data_rate value: %s\n", env_data_rate);
@@ -161,4 +195,12 @@ static void signal_handler(int sig) {
 
 static void mqtt_message_received_callback(const char *topic, const char *message) {
     syslog(LOG_INFO, "Message received on topic %s: %s\n", topic, message);
+    if(strcmp(topic, MQTT_MODULE_GET_TEMPERATURE_TOPIC) == 0) {
+        pthread_mutex_lock(&nrf24_message_mutex);
+        nrf24_message_to_write = strdup(message);
+        if(nrf24_message_to_write == NULL) {
+            syslog(LOG_ERR, "Error: Could not allocate memory for message\n");
+        }
+        pthread_mutex_unlock(&nrf24_message_mutex);
+    }
 }
