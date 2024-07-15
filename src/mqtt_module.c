@@ -9,12 +9,13 @@ static uint8_t recvbuf[2048] = {0};
 static int sockfd = -1;
 static bool refresh = true;
 static pthread_t refresher_thread;
+static void (*message_received_callback)(const char * topic, const char * message) = NULL;
 
 static int open_socket_nonblock(const char * broker, const char * port);
 static void publish_callback(void** unused, struct mqtt_response_publish *published);
 static void* client_refresher(void* client);
 
-int mqtt_module_init(const char * broker, const char * port){
+int mqtt_module_init(const char * broker, const char * port, void (*callback)(const char * topic, const char * message)){
     enum MQTTErrors err;
     sockfd = open_socket_nonblock(broker, port);
     if(sockfd == -1){
@@ -41,6 +42,8 @@ int mqtt_module_init(const char * broker, const char * port){
         syslog(LOG_ERR, "Error: Could not create refresher thread\n");
         goto err_exit;
     }
+
+    message_received_callback = callback;
 
     err = mqtt_subscribe(&client, mqtt_topic, 0);
     if(err != MQTT_OK){
@@ -80,6 +83,10 @@ static void publish_callback(void** unused, struct mqtt_response_publish *publis
     memcpy(topic_name, published->topic_name, published->topic_name_size);
     topic_name[published->topic_name_size] = '\0';
     syslog(LOG_INFO, "Received message (topic: '%s'): %s\n", topic_name, (const char *)published->application_message);
+
+    if(message_received_callback != NULL){
+        message_received_callback(topic_name, (const char *)published->application_message);
+    }
 
     free(topic_name);
 }

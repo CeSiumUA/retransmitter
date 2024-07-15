@@ -2,6 +2,7 @@
 
 static void load_configuration(const char *configuration_file, struct retransmitter_configuration_t *nrf24_configuration);
 static void signal_handler(int sig);
+static void mqtt_message_received_callback(const char *topic, const char *message);
 
 int main(int argc, char **argv) {
     struct retransmitter_configuration_t retransmitter_configuration = {
@@ -35,7 +36,7 @@ int main(int argc, char **argv) {
     load_configuration(configuration_file, &retransmitter_configuration);
 
     syslog(LOG_DEBUG, "Initializing MQTT module\n");
-    res = mqtt_module_init(retransmitter_configuration.mqtt_broker, retransmitter_configuration.mqtt_port);
+    res = mqtt_module_init(retransmitter_configuration.mqtt_broker, retransmitter_configuration.mqtt_port, mqtt_message_received_callback);
     if(res != 0) {
         syslog(LOG_ERR, "Error: Could not initialize MQTT module\n");
         goto exit;
@@ -129,4 +130,8 @@ static void signal_handler(int sig) {
         default:
             break;
     }
+}
+
+static void mqtt_message_received_callback(const char *topic, const char *message) {
+    syslog(LOG_INFO, "Message received on topic %s: %s\n", topic, message);
 }
