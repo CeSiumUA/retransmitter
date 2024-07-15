@@ -6,7 +6,7 @@ static void signal_handler(int sig);
 static void mqtt_message_received_callback(const char *topic, const char *message);
 static void read_write_loop(void);
 char *nrf24_message_to_write = NULL;
-struct mutex nrf24_message_mutex;
+pthread_mutex_t nrf24_message_mutex;
 
 int main(int argc, char **argv) {
     struct retransmitter_configuration_t retransmitter_configuration = {
@@ -83,9 +83,9 @@ exit:
 
 static void read_write_loop(void) {
     int res = 0;
-    uint8_t buffer[32] = {0};
+    char buffer[32] = {0};
     while(running) {
-        res = nrf24_read(buffer, sizeof(buffer));
+        res = nrf24_read((uint8_t *)buffer, sizeof(buffer));
         if(res > 0) {
             syslog(LOG_INFO, "Message received: %s\n", buffer);
             res = mqtt_module_publish(MQTT_MODULE_TEMPERATURE_TOPIC, buffer);
@@ -99,7 +99,7 @@ static void read_write_loop(void) {
         if(nrf24_message_to_write != NULL){
             syslog(LOG_INFO, "Writing message: %s\n", nrf24_message_to_write);
             pthread_mutex_lock(&nrf24_message_mutex);
-            res = nrf24_write(nrf24_message_to_write, strlen(nrf24_message_to_write) + 1);
+            res = nrf24_write((uint8_t *)nrf24_message_to_write, strlen(nrf24_message_to_write) + 1);
             if(res < 0) {
                 syslog(LOG_ERR, "Error: Could not write message\n");
             }
