@@ -13,14 +13,18 @@
 #include <time.h>
 #include <errno.h>
 #include "mqtt_module.h"
+#include "nrf24.h"
 
-#define CONFIGURATION_FILE_PATH                     "/etc/retransmitter/config.ini"
-#define NRF24_CONFIGURATION_CHANNEL_DEFAULT          36
-#define NRF24_CONFIGURATION_CHANNEL_ENV_NAME         "RETRANSMITTER_NRF24_CHANNEL"
-#define NRF24_CONFIGURATION_RX_PAYLOAD_SIZE_DEFAULT  32
-#define NRF24_CONFIGURATION_RX_PAYLOAD_SIZE_ENV_NAME "RETRANSMITTER_NRF24_RX_PAYLOAD_SIZE"
-#define NRF24_CONFIGURATION_DATA_RATE_DEFAULT        0 //1 Mbps
-#define NRF24_CONFIGURATION_DATA_RATE_ENV_NAME       "RETRANSMITTER_NRF24_DATA_RATE"
+#define CONFIGURATION_FILE_PATH                             "/etc/retransmitter/config.ini"
+
+#define NRF24_CONFIGURATION_CHANNEL_DEFAULT                 36
+#define NRF24_CONFIGURATION_CHANNEL_ENV_NAME                "RETRANSMITTER_NRF24_CHANNEL"
+#define NRF24_CONFIGURATION_RX_PAYLOAD_SIZE_DEFAULT         32
+#define NRF24_CONFIGURATION_RX_PAYLOAD_SIZE_ENV_NAME        "RETRANSMITTER_NRF24_RX_PAYLOAD_SIZE"
+#define NRF24_CONFIGURATION_DATA_RATE_DEFAULT               0 //1 Mbps
+#define NRF24_CONFIGURATION_DATA_RATE_ENV_NAME              "RETRANSMITTER_NRF24_DATA_RATE"
+#define NRF24_CONFIGURATION_DATA_PIPE_DEFAULT               0
+#define NRF24_CONFIGURATION_DATA_PIPE_ENV_NAME              "RETRANSMITTER_NRF24_DATA_PIPE"
 
 #define MQTT_CONFIGURATION_BROKER_DEFAULT             "localhost"
 #define MQTT_CONFIGURATION_BROKER_ENV_NAME           "RETRANSMITTER_MQTT_BROKER"
@@ -31,6 +35,7 @@ struct retransmitter_configuration_t {
     uint8_t channel;
     uint8_t rx_payload_size;
     uint8_t data_rate;
+    uint8_t data_pipe;
     char mqtt_broker[256];
     char mqtt_port[6];
 };
