@@ -11,6 +11,7 @@
 #include <pthread.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <errno.h>
 #include "mqtt.h"
 
 #define MQTT_MODULE_TEMPERATURE_TOPIC                   "retransmitter/temperature"

@@ -110,13 +110,16 @@ static int open_socket_nonblock(const char * broker, const char * port){
     }
 
     for(p = servinfo; p != NULL; p = p->ai_next) {
+        syslog(LOG_DEBUG, "Trying to create a socket\n");
         sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
         if(sockfd == -1) {
             continue;
         }
-
+        syslog(LOG_DEBUG, "Socket created\n");
+        syslog(LOG_DEBUG, "Trying to connect\n");
         res = connect(sockfd, p->ai_addr, p->ai_addrlen);
         if(res == -1) {
+            syslog(LOG_ERR, "Error: Could not connect to broker (%s)\n", strerror(errno));
             close(sockfd);
             sockfd = -1;
             continue;
@@ -125,9 +128,12 @@ static int open_socket_nonblock(const char * broker, const char * port){
         break;
     }
 
+    syslog(LOG_DEBUG, "Connected to broker\n");
+
     freeaddrinfo(servinfo);
 
     if(sockfd != -1){
+        syslog(LOG_DEBUG, "Setting socket to non-blocking\n");
         fcntl(sockfd, F_SETFL, fcntl(sockfd, F_GETFL) | O_NONBLOCK);
     }
 
