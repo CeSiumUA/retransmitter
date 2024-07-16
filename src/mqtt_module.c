@@ -67,7 +67,7 @@ void mqtt_module_deinit(void){
 
 int mqtt_module_publish(const char * topic, const char * message){
     enum MQTTErrors err;
-    err = mqtt_publish(&client, topic, message, strlen(message) + 1, MQTT_PUBLISH_QOS_0);
+    err = mqtt_publish(&client, topic, message, strlen(message), MQTT_PUBLISH_QOS_0);
     if(err != MQTT_OK){
         syslog(LOG_ERR, "Error: Could not publish message\n");
         return -1;
