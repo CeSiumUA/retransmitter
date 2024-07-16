@@ -11,6 +11,9 @@ def on_connect(client, userdata, flags, reason_code, properties):
 
 def on_message(client, userdata, msg):
     print(f"Received `{msg.payload.decode()}` from `{msg.topic}` topic")
+    if msg.topic == 'retransmitter/temperature':
+        with open('temperature.txt', 'a') as f:
+            f.write(msg.payload.decode())
 
 client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
 client.on_connect = on_connect
