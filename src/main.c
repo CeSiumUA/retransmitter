@@ -40,6 +40,15 @@ int main(int argc, char **argv) {
     syslog(LOG_DEBUG, "Loading configuration\n");
     load_configuration(configuration_file, &retransmitter_configuration);
 
+    syslog(LOG_DEBUG, "Configuration loaded\n");
+
+    syslog(LOG_DEBUG, "Daemonizing process\n");
+    res = daemon(0, 0);
+    if(res != 0) {
+        syslog(LOG_ERR, "Error: Could not daemonize the process (%s)\n", strerror(errno));
+        goto mqtt_exit;
+    }
+
     res = pthread_mutex_init(&nrf24_message_mutex, NULL);
     if(res != 0) {
         syslog(LOG_ERR, "Error: Could not initialize mutex\n");
@@ -51,12 +60,6 @@ int main(int argc, char **argv) {
     if(res != 0) {
         syslog(LOG_ERR, "Error: Could not initialize MQTT module\n");
         goto mutex_exit;
-    }
-
-    res = daemon(0, 0);
-    if(res != 0) {
-        syslog(LOG_ERR, "Error: Could not daemonize the process (%s)\n", strerror(errno));
-        goto mqtt_exit;
     }
 
     res = nrf24_open(retransmitter_configuration.channel,

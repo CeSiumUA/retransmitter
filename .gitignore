@@ -2,3 +2,4 @@
 *.o
 retransmitter
 test/env
+temperature.txt

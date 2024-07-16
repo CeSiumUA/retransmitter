@@ -1,7 +1,7 @@
 #include "mqtt_module.h"
 
 const char * const mqtt_client_name = MQTT_MODULE_CLIENT_NAME;
-const char * const mqtt_topic = MQTT_MODULE_TEMPERATURE_TOPIC;
+const char * const mqtt_topic = MQTT_MODULE_GET_TEMPERATURE_TOPIC;
 
 static struct mqtt_client client;
 static uint8_t sendbuf[2048] = {0};
@@ -67,7 +67,7 @@ void mqtt_module_deinit(void){
 
 int mqtt_module_publish(const char * topic, const char * message){
     enum MQTTErrors err;
-    err = mqtt_publish(&client, topic, message, strlen(message) + 1, MQTT_PUBLISH_QOS_0);
+    err = mqtt_publish(&client, topic, message, strlen(message), MQTT_PUBLISH_QOS_0);
     if(err != MQTT_OK){
         syslog(LOG_ERR, "Error: Could not publish message\n");
         return -1;
@@ -110,13 +110,15 @@ static int open_socket_nonblock(const char * broker, const char * port){
     }
 
     for(p = servinfo; p != NULL; p = p->ai_next) {
+        syslog(LOG_DEBUG, "Trying to create a socket\n");
         sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
         if(sockfd == -1) {
             continue;
         }
-
+        syslog(LOG_DEBUG, "Socket created\n");
         res = connect(sockfd, p->ai_addr, p->ai_addrlen);
         if(res == -1) {
+            syslog(LOG_ERR, "Error: Could not connect to broker (%s)\n", strerror(errno));
             close(sockfd);
             sockfd = -1;
             continue;
@@ -125,9 +127,12 @@ static int open_socket_nonblock(const char * broker, const char * port){
         break;
     }
 
+    syslog(LOG_DEBUG, "Connected to broker\n");
+
     freeaddrinfo(servinfo);
 
     if(sockfd != -1){
+        syslog(LOG_DEBUG, "Setting socket to non-blocking\n");
         fcntl(sockfd, F_SETFL, fcntl(sockfd, F_GETFL) | O_NONBLOCK);
     }
 
