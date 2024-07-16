@@ -116,10 +116,6 @@ static int open_socket_nonblock(const char * broker, const char * port){
             continue;
         }
         syslog(LOG_DEBUG, "Socket created\n");
-        char addr_str[INET6_ADDRSTRLEN];
-        struct sockaddr_in *ipv4 = (struct sockaddr_in *)p->ai_addr;
-        inet_ntop(p->ai_family, &(ipv4->sin_addr), addr_str, sizeof(addr_str));
-        syslog(LOG_DEBUG, "Trying to connect (address: %s)\n", addr_str);
         res = connect(sockfd, p->ai_addr, p->ai_addrlen);
         if(res == -1) {
             syslog(LOG_ERR, "Error: Could not connect to broker (%s)\n", strerror(errno));
