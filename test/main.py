@@ -28,4 +28,4 @@ print('Connected to the broker')
 
 while(True):
     data_to_send = input('Enter data to send:')
-    client.publish('retransmitter/temperature', data_to_send)
+    client.publish('retransmitter/get_temperature', data_to_send)
